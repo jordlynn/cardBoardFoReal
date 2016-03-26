@@ -14,7 +14,7 @@ import android.opengl.Matrix;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.util.Log;
-
+import android.hardware.camera2.*;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -32,6 +32,8 @@ import javax.microedition.khronos.egl.EGLConfig;
 
 public class main extends CardboardActivity implements CardboardView.StereoRenderer{
 	private static final String TAG = "MAIN";
+	private static String [] cameraID = new String[1];
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState){
@@ -42,6 +44,15 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	    cardboardView.setRestoreGLStateEnabled(false);
 	    cardboardView.setRenderer(this);
 	    setCardboardView(cardboardView);
+
+	    // Start Camera
+	    
+	    CameraManager cManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+	    try{
+	    	cameraID = cManager.getCameraIdList();
+	    }catch(CameraAccessException e){
+	    	 System.err.println("CameraAccessExecption: " + e.getMessage());
+	    }
     }
 
     @Override
