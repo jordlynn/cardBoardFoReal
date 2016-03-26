@@ -23,6 +23,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+import boofcv.io.UtilIO;
+
 import javax.microedition.khronos.egl.EGLConfig;
 
 public class main extends Activity
