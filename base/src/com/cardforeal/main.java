@@ -25,6 +25,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import boofcv.io.UtilIO;
+import boofcv.android.gui.VideoImageProcessing;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
