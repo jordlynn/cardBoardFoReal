@@ -48,6 +48,7 @@ import java.io.*;
 import java.nio.*;
 import boofcv.android.BoofAndroidFiles;
 import android.content.res.Resources;
+import boofcv.core.encoding.ConvertNV21;
 
 public class Fiducial{
     IntrinsicParameters params;
@@ -59,6 +60,7 @@ public class Fiducial{
     public Fiducial(int intrinsicFile, Resources source){
         InputStream is = null;
         Reader reader = null;
+
         try{
             is = source.openRawResource(intrinsicFile);
             reader = new InputStreamReader(is);
@@ -77,7 +79,15 @@ public class Fiducial{
         }
     }
 
+
     public Fiducial(){
+    }
+
+    public void processPrimer(byte[] data, int width, int height){
+        ConvertNV21 tmp = new ConvertNV21();
+        ImageFloat32 supaTMP = new ImageFloat32();
+        tmp.nv21ToGray(data, width, height, supaTMP);
+        process(supaTMP);
     }
 
     public synchronized void process(ImageFloat32 input){
@@ -85,6 +95,7 @@ public class Fiducial{
         int tf = detector.totalFound();
         Se3_F64 sixDof = new Se3_F64();
         //List<Matrix> result = new ArrayList<Matrix>(tf);
+        System.out.println("Found hererer============================ " + tf);
         for(int i=0; i<tf; i++){
             detector.getFiducialToCamera(i, sixDof);
             System.out.println("Found "+sixDof);

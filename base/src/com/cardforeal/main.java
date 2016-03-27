@@ -8,7 +8,7 @@ import com.google.vrtoolkit.cardboard.HeadTransform;
 import com.google.vrtoolkit.cardboard.*;
 
 import com.google.vrtoolkit.cardboard.Viewport;
-
+import com.cardforeal.Fiducial;
 import android.app.Activity;
 import android.content.Context;
 import android.opengl.GLES20;
@@ -17,6 +17,8 @@ import android.os.Bundle;
 import android.os.Vibrator;
 import android.util.Log;
 import android.hardware.Camera;
+import android.graphics.ImageFormat;
+
 import android.opengl.GLES20;
 
 import android.graphics.SurfaceTexture;
@@ -43,6 +45,8 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	private static String cameraID = new String();
 	private static final int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
 	private Camera camera;
+
+
 
 	private final String vertexShaderCode =
         "attribute vec4 position;" +
@@ -93,7 +97,6 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	private final int vertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
 
 	private ByteBuffer indexBuffer;    // Buffer for index-array
-
 	private int texture;
 	private CardboardOverlayView mOverlayView;
 	private CardboardView cardboardView;
@@ -106,6 +109,7 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
     @Override
     public void onCreate(Bundle savedInstanceState){
 	    super.onCreate(savedInstanceState);
+	    Log.d(TAG, "Starting up...");
 
 	    setContentView(R.layout.main);
 	    CardboardView cardboardView = (CardboardView) findViewById(R.id.cardboard_view);
@@ -121,61 +125,76 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
     }
 
     public void startCamera(int texture) {
-    surface = new SurfaceTexture(texture);
-    surface.setOnFrameAvailableListener(this);
+	    surface = new SurfaceTexture(texture);
+	    surface.setOnFrameAvailableListener(this);
 
-    camera = Camera.open();
-    Camera.Parameters params = camera.getParameters();
-    params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+	    camera = Camera.open();
+	    Camera.Parameters params = camera.getParameters();
+	    params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+	    params.setRecordingHint(true); // Tell the camera we're more interested in video.
+	    camera.setParameters(params);
 
-    camera.setParameters(params);
-    try {
-        camera.setPreviewTexture(surface);
-        camera.startPreview();
-    } catch (IOException ioe)
-    {
-        Log.d(TAG, "CAM LAUNCH FAILED");
-    }
+	    try {
+	        camera.setPreviewTexture(surface);
+	        camera.startPreview();
+	    } catch (IOException ioe){
+	        Log.d(TAG, "CAM LAUNCH FAILED");
+	    }
+
+	    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback(){ 
+            public void onPreviewFrame(byte[] data, Camera camera){ 
+                    try{ 
+                    	Fiducial tmp = new Fiducial(R.raw.nexusintrinsics, getResources());
+                    	tmp.processPrimer(data, camera.getParameters().getPreviewSize().width, camera.getParameters().getPreviewSize().height);
+                    } 
+                    catch(Exception e) 
+                    {
+
+                    } 
+            } 
+        }; 
+
+    camera.setPreviewCallback(previewCallback); 
 	}
 
-	static private int createTexture() {
-    int[] texture = new int[1];
+	static private int createTexture(){
+	    int[] texture = new int[1];
 
-    GLES20.glGenTextures(1, texture, 0);
-    GLES20.glBindTexture(GL_TEXTURE_EXTERNAL_OES, texture[0]);
-    GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
-            GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
-    GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
-            GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-    GLES20.glTexParameteri(GL_TEXTURE_EXTERNAL_OES,
-            GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-    GLES20.glTexParameteri(GL_TEXTURE_EXTERNAL_OES,
-            GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+	    GLES20.glGenTextures(1, texture, 0);
+	    GLES20.glBindTexture(GL_TEXTURE_EXTERNAL_OES, texture[0]);
+	    GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
+	            GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
+	    GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES,
+	            GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+	    GLES20.glTexParameteri(GL_TEXTURE_EXTERNAL_OES,
+	            GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
+	    GLES20.glTexParameteri(GL_TEXTURE_EXTERNAL_OES,
+	            GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
 
-    return texture[0];
+	    return texture[0];
 	}
 
 	private int loadGLShader(int type, String code) {
-    int shader = GLES20.glCreateShader(type);
-    GLES20.glShaderSource(shader, code);
-    GLES20.glCompileShader(shader);
+	    int shader = GLES20.glCreateShader(type);
+	    GLES20.glShaderSource(shader, code);
+	    GLES20.glCompileShader(shader);
 
-    // Get the compilation status.
-    final int[] compileStatus = new int[1];
-    GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
+	    // Get the compilation status.
+	    final int[] compileStatus = new int[1];
+	    GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
 
-    // If the compilation failed, delete the shader.
-    if (compileStatus[0] == 0) {
-        Log.e(TAG, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
-        GLES20.glDeleteShader(shader);
-        shader = 0;
-    }
+	    // If the compilation failed, delete the shader.
+	    if (compileStatus[0] == 0) {
+	        Log.e(TAG, "Error compiling shader: " + GLES20.glGetShaderInfoLog(shader));
+	        GLES20.glDeleteShader(shader);
+	        shader = 0;
+	    }
 
-    if (shader == 0) {
-        throw new RuntimeException("Error creating shader.");
-    }
+	    if (shader == 0) {
+	        throw new RuntimeException("Error creating shader.");
+	    }
 
-    return shader;
+	    return shader;
 	}
 
     @Override
@@ -252,6 +271,7 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	    GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 	    surface.updateTexImage();
 	    surface.getTransformMatrix(mtx);
+
 	}
 
 
