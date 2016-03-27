@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import android.os.SystemClock;
 
 import boofcv.io.UtilIO;
 import boofcv.android.gui.VideoImageProcessing;
@@ -64,20 +65,29 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
                 //"  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n" +
                 "}";
 
-    private FloatBuffer vertexBuffer, textureVerticesBuffer, vertexBuffer2;
+  private FloatBuffer vertexBuffer, textureVerticesBuffer, vertexBuffer2;
 	private ShortBuffer drawListBuffer, buf2;
 	private int mProgram;
 	private int mPositionHandle, mPositionHandle2;
 	private int mColorHandle;
 	private int mTextureCoordHandle;
 
+  private float[] mMVPMatrix;
+  private float[] mProjectionMatrix;
+  private float[] mRotationMatrix;
+  private float[] mFinalMVPMatrix;
+
+  private Cube mCube;
+  private float mCubeRotation;
+  private long mLastUpdateMillis;
+
 	// number of coordinates per vertex in this array
 	static final int COORDS_PER_VERTEX = 2;
 	static float squareVertices[] = { // in counterclockwise order:
-        -1.0f, -1.0f,   // 0.left - mid
-        1.0f, -1.0f,   // 1. right - mid
-        -1.0f, 1.0f,   // 2. left - top
-        1.0f, 1.0f,   // 3. right - top
+        -.58f, -.58f,// 0.left - mid
+        .58f, -.58f, // 1. right - mid
+        -.58f, .58f, // 2. left - top
+        .58f, .58f // 3. right - top
     };
 
     private short drawOrder[] = {0, 2, 1, 1, 2, 3}; // order to draw vertices
@@ -116,6 +126,12 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	    // Start Camera stuff, sorry not sorry Brett.
 	    mCamera = new float[16];
 	    mView = new float[16];
+
+      mMVPMatrix = new float[16];
+      mProjectionMatrix = new float[16];
+      mRotationMatrix = new float[16];
+      mFinalMVPMatrix = new float[16];
+
 	    mOverlayView = (CardboardOverlayView) findViewById(R.id.overlay);
 	    //mOverlayView.show3DToast("Pull the magnet when you find an object.");
     }
@@ -189,7 +205,6 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 
   	@Override
   	public void onSurfaceChanged(int width, int height){
-
   	}
 
   	/***
@@ -238,7 +253,15 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	    GLES20.glLinkProgram(mProgram);
 
 	    texture = createTexture();
+
+      mCube = new Cube();
+
 	    startCamera(texture);
+
+      GLES20.glClearDepthf(1.0f);
+      GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+      GLES20.glDepthFunc(GLES20.GL_LEQUAL);
+      //GLES20.glHint(GLES20.GL_PERSPECTIVE_CORRECTION_HINT, GLES20.GL_NICEST);
 	}
 
 	/**
@@ -306,8 +329,27 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
 	    GLES20.glDisableVertexAttribArray(mPositionHandle);
 	    GLES20.glDisableVertexAttribArray(mTextureCoordHandle);
 
-	    Matrix.multiplyMM(mView, 0, transform.getEyeView(), 0, mCamera, 0);
+      // Apply the rotation.
+      Matrix.setRotateM(mRotationMatrix, 0, mCubeRotation, 1.0f, 1.0f, 1.0f);
+      // Combine the rotation matrix with the projection and camera view
+      //Matrix.multiplyMM(mFinalMVPMatrix, 0, mMVPMatrix, 0, mRotationMatrix, 0);
+
+      // Draw cube.
+
+      Matrix.multiplyMM(mView, 0, transform.getEyeView(), 0, mCamera, 0);
+      mCube.draw(mRotationMatrix);
+
+      updateCubeRotation();
 	}
+
+    private void updateCubeRotation() {
+        if (mLastUpdateMillis != 0) {
+            float factor = (SystemClock.elapsedRealtime() - mLastUpdateMillis) / (1000 / 60);
+            mCubeRotation += .6f * factor;
+            //mCubeRotation = (mCubeRotation + 0.6f * factor) % 360.0f;
+        }
+        mLastUpdateMillis = SystemClock.elapsedRealtime();
+    }
 
 		@Override
 	public void onFinishFrame(Viewport viewport) {
