@@ -184,7 +184,7 @@ public class main extends CardboardActivity implements CardboardView.StereoRende
   	}
   	@Override
 	public void onFrameAvailable(SurfaceTexture arg0) {
-	    this.cardboardView.requestRender();
+	    //this.cardboardView.requestRender();
 	}
 
   	@Override
